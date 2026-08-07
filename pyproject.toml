@@ -1,0 +1,9 @@
+[project]
+name = "telegram-stars-payment-gateway"
+version = "2.0.0"
+description = "Платный доступ к AI-функциям: Telegram Stars / ЮKassa + тарифы + возвраты"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
