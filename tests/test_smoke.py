@@ -78,3 +78,16 @@ def test_ai_service_gate_to_project2() -> None:
     assert "Результат AI-анализа" in text
     assert "Преимущества" in text
     assert "Проблемы" in text
+
+
+def test_status_helpers() -> None:
+    """Остаток дней подписки и человекочитаемые названия тарифов."""
+    from datetime import date, timedelta
+
+    from bot import _days_left, _tier_label
+
+    assert _days_left((date.today() + timedelta(days=1)).isoformat()) == 1
+    assert _days_left(date.today().isoformat()) == 0
+    assert _days_left("не дата") == 0
+    assert _tier_label("pro") == "Про (90 дней)"
+    assert _tier_label("неизвестный") == "неизвестный"

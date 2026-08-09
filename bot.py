@@ -24,6 +24,7 @@ import asyncio
 import html as _html
 import logging
 import os
+from datetime import date
 
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.client.default import DefaultBotProperties
@@ -179,6 +180,20 @@ def _days_for(tier: dict) -> int:
     return mapping.get(tier["key"], config.SUBSCRIPTION_DAYS)
 
 
+def _days_left(until: str) -> int:
+    """Сколько дней осталось до конца подписки (по ISO-дате из БД)."""
+    try:
+        return (date.fromisoformat(until) - date.today()).days
+    except ValueError:
+        return 0
+
+
+def _tier_label(key: str) -> str:
+    """Человекочитаемое название тарифа по ключу (или сам ключ)."""
+    tier = config.tier_by_key(key)
+    return tier["label"] if tier else key
+
+
 @router.message(Command("trial"))
 async def cmd_trial(message: Message) -> None:
     """Бесплатный пробный период — один раз на пользователя."""
@@ -199,6 +214,12 @@ async def cmd_trial(message: Message) -> None:
 @router.message(Command("refund"))
 async def cmd_refund(message: Message) -> None:
     """Возврат последнего платежа (Telegram Stars) + отзыв доступа."""
+    if not config.STAR_PAYMENTS:
+        await message.answer(
+            "Возврат доступен только для Telegram Stars. В тестовом режиме "
+            "ЮKassa возврат оформляется в кабинете ЮKassa."
+        )
+        return
     charge_id = await db.last_charge_id(message.from_user.id)
     if charge_id is None:
         await message.answer("Возвращать нечего: нет не-возвращённых платежей.")
@@ -234,7 +255,7 @@ async def cmd_payments(message: Message) -> None:
         status = "↩️ возвращён" if r["refunded"] else "✅ оплачен"
         lines.append(
             f"• {r['created_at']} — {_format_amount(r['currency'], r['amount'])} "
-            f"(тариф: {r['tier']}) — {status}"
+            f"(тариф: {_tier_label(r['tier'])}) — {status}"
         )
     await message.answer("🧾 <b>История платежей</b>\n\n" + "\n".join(lines[:10]))
 
@@ -243,7 +264,9 @@ async def cmd_payments(message: Message) -> None:
 async def cmd_status(message: Message) -> None:
     until = await db.until(message.from_user.id)
     if until and await db.is_subscribed(message.from_user.id):
-        await message.answer(f"✅ Подписка активна до <b>{until}</b>")
+        left = _days_left(until)
+        suffix = f" (осталось {left} дн.)" if left >= 0 else ""
+        await message.answer(f"✅ Подписка активна до <b>{until}</b>{suffix}")
     else:
         await message.answer("❌ Подписка не активна. /subscribe или /trial")
 
