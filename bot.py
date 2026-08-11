@@ -155,16 +155,21 @@ async def on_successful_payment(message: Message) -> None:
     if tier is None:  # не должно случиться (валидируется в pre_checkout), но на всякий
         await message.answer("⚠️ Ошибка: неизвестный тариф платежа.")
         return
-    await db.activate(
-        message.from_user.id, message.from_user.username, _days_for(tier)
-    )
-    await db.add_payment(
+    # Идемпотентность: Telegram доставляет апдейты at-least-once — повторная
+    # доставка того же successful_payment не должна продлевать подписку дважды.
+    inserted = await db.add_payment(
         message.from_user.id,
         message.from_user.username,
         payment.total_amount,
         payment.currency,
         tier["key"],
         payment.telegram_payment_charge_id,
+    )
+    if not inserted:
+        await message.answer("ℹ️ Этот платёж уже был обработан ранее.")
+        return
+    await db.activate(
+        message.from_user.id, message.from_user.username, _days_for(tier)
     )
     amount = _format_amount(payment.currency, payment.total_amount)
     await message.answer(

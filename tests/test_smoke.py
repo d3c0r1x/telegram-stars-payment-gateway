@@ -98,3 +98,23 @@ def test_status_helpers() -> None:
     assert _days_left("не дата") == 0
     assert _tier_label("pro") == "Про (90 дней)"
     assert _tier_label("неизвестный") == "неизвестный"
+
+def test_payment_idempotency(tmp_path) -> None:
+    """Повторная доставка одного successful_payment не дублирует платёж.
+
+    Telegram доставляет апдейты at-least-once: после рестарта бота тот же
+    successful_payment может прийти снова. add_payment должен вернуть False
+    и не создать вторую запись — иначе подписка продлится дважды.
+    """
+    async def run() -> None:
+        db = _make_db(tmp_path)
+        await db.init()
+        assert await db.add_payment(1, "alice", 50, "XTR", "starter", "charge-1") is True
+        assert await db.add_payment(1, "alice", 50, "XTR", "starter", "charge-1") is False
+        hist = await db.payment_history(1)
+        assert len(hist) == 1  # дубликат не создан
+        # другой платёж (новый charge_id) — проходит нормально
+        assert await db.add_payment(1, "alice", 120, "XTR", "pro", "charge-2") is True
+        assert len(await db.payment_history(1)) == 2
+
+    asyncio.run(run())

@@ -44,6 +44,13 @@ class Database:
                 )
                 """
             )
+            # Идемпотентность: один charge_id = один платёж. Telegram доставляет
+            # апдейты at-least-once — повторная доставка того же
+            # successful_payment не должна создавать дубликат.
+            await db.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_charge "
+                "ON payments (telegram_payment_charge_id)"
+            )
             await db.commit()
 
     async def is_subscribed(self, user_id: int) -> bool:
@@ -118,11 +125,17 @@ class Database:
         currency: str,
         tier: str,
         charge_id: str,
-    ) -> None:
+    ) -> bool:
+        """Пишет платёж в журнал; True — если запись новая.
+
+        False — платёж с таким charge_id уже был обработан (повторная
+        доставка апдейта Telegram после рестарта бота) — дубликат молча
+        пропускается (INSERT OR IGNORE по уникальному индексу).
+        """
         async with aiosqlite.connect(self.path) as db:
-            await db.execute(
+            cur = await db.execute(
                 """
-                INSERT INTO payments
+                INSERT OR IGNORE INTO payments
                     (user_id, username, amount, currency, tier,
                      telegram_payment_charge_id, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
@@ -130,6 +143,7 @@ class Database:
                 (user_id, username or "", amount, currency, tier, charge_id),
             )
             await db.commit()
+            return cur.rowcount > 0
 
     async def payment_history(self, user_id: int, limit: int = 10) -> list[dict]:
         async with aiosqlite.connect(self.path) as db:
