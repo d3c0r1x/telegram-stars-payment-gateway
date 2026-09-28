@@ -1,5 +1,7 @@
 # Telegram Stars Payment Gateway
 
+[![CI](https://github.com/d3c0r1x/telegram-stars-payment-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/d3c0r1x/telegram-stars-payment-gateway/actions/workflows/ci.yml)
+
 Бот-шлюз: доступ к AI-аналитике предоставляется **только после оплаты подписки**. Оплата — Telegram Stars (или тестовый режим ЮKassa). Статус подписки хранится в SQLite, доступ отзывается автоматически по истечении срока.
 
 Соответствует ТЗ: aiogram (обработка `PreCheckoutQuery` и `SuccessfulPayment`) + SQLite.
