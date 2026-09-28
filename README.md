@@ -1,75 +1,30 @@
 # Telegram Stars Payment Gateway
 
+**Payment/subscription component for Telegram AI products.**
+
 [![CI](https://github.com/d3c0r1x/telegram-stars-payment-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/d3c0r1x/telegram-stars-payment-gateway/actions/workflows/ci.yml)
 
-Бот-шлюз: доступ к AI-аналитике предоставляется **только после оплаты подписки**. Оплата — Telegram Stars (или тестовый режим ЮKassa). Статус подписки хранится в SQLite, доступ отзывается автоматически по истечении срока.
+A focused example of a paid-feature flow: the user selects a plan, pays through Telegram Stars, receives access for the subscription period, and can later receive a refund with access revoked.
 
-Соответствует ТЗ: aiogram (обработка `PreCheckoutQuery` и `SuccessfulPayment`) + SQLite.
+## What it demonstrates
 
-## 🕹 Живое демо
+- `PreCheckoutQuery` / `SuccessfulPayment` handling;
+- subscription state in SQLite;
+- trial periods;
+- refunds;
+- server-side validation of tariff/payment payload;
+- tests and GitHub Actions.
 
-Онлайн-демо не опубликовано: поллинг Telegram требует постоянно работающего процесса. Локальный запуск — `start.bat` (см. раздел «Запуск»); витрина всех проектов — [d3c0r1x.github.io](https://d3c0r1x.github.io).
+## Stack
 
-## Команды
+Python · aiogram 3 · Telegram Stars · SQLite · pytest · GitHub Actions
 
-| Команда | Назначение |
-|---|---|
-| `/subscribe` | выбор тарифа и оплата (инлайн-кнопки) |
-| `/trial` | бесплатный пробный период, один раз на пользователя |
-| `/status` | статус и дата окончания подписки |
-| `/payments` | журнал платежей |
-| `/refund` | возврат последнего платежа Stars + отзыв доступа |
-| `/unsubscribe` | досрочное отключение подписки (доступ отзывается сразу) |
-| `/analyze ...` | AI-аналитика (доступна только оплатившим) |
-
-## Тарифы
-
-Задаются в `config.py` и отображаются кнопками:
-
-- **starter** — 50 ⭐ / 30 дней;
-- **pro** — 120 ⭐ / 90 дней;
-- **business** — 200 ⭐ / 180 дней.
-
-## Принцип работы
-
-1. Пользователь выбирает тариф → бот отправляет инвойс через `send_invoice`;
-2. Telegram отображает платёжное окно (Stars или банковская карта через ЮKassa);
-3. Поступает `PreCheckoutQuery` — подтверждается (или отклоняется при несоответствии);
-4. После успешной оплаты приходит `SuccessfulPayment` → подписка активируется, запись вносится в журнал;
-5. **Серверная валидация payload**: цена и тариф не берутся из данных кнопки, а собираются на сервере из `payload` — подмена цены в инвойсе исключена;
-6. `/refund` возвращает Stars через `refund_star_payment` и отзывает доступ.
-
-`STAR_PAYMENTS=0` переключает на тестовый режим ЮKassa (`YOOKASSA_PROVIDER_TOKEN` выдаёт @BotFather в меню Payments).
-
-## Запуск
+## Local run
 
 ```bash
 python -m venv .venv
 pip install -r requirements.txt
-export WB_BOT_TOKEN=123456:ABC...
-export STAR_PAYMENTS=1
 python bot.py
 ```
 
-На Windows — `start.bat`. Демо-режим не предусмотрен: платёж в тестовом окружении Telegram проходит без фактического списания средств — особенность тестового режима платежей.
-
-## Структура проекта
-
-```
-bot.py          — инвойсы, PreCheckoutQuery, SuccessfulPayment, команды
-ai_service.py   — заглушка AI-аналитики (в учебной связке импортирует Проект 2)
-db.py           — подписки, журнал платежей, used_trial, refund_payment
-config.py       — тарифы (TIERS), парсинг payload, настройки
-middlewares.py  — троттлинг и логирование
-tests/          — 7 тестов (парсинг payload, подписки, возвраты, журнал, остаток дней, идемпотентность)
-```
-
-## Планы развития
-
-- автопродление Stars через `recurring`-платежи (по мере появления поддержки в Telegram API);
-- проверка обращения AI-аналитики к Проекту 2 вместо заглушки;
-- уведомление о скором окончании подписки.
-
-## Тесты
-
-`pytest tests/ -q` — 7 тестов. GitHub Actions прогоняет их при каждом push.
+No public demo is provided because the project requires a running Telegram bot/payment environment.
