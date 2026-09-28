@@ -94,6 +94,20 @@ class Database:
                 row = await cur.fetchone()
         return row[0] if row else None
 
+    async def last_tier(self, user_id: int) -> str | None:
+        """Ключ тарифа последнего не-возвращённого платежа (для /status)."""
+        async with aiosqlite.connect(self.path) as db:
+            async with db.execute(
+                """
+                SELECT tier FROM payments
+                WHERE user_id = ? AND refunded = 0
+                ORDER BY id DESC LIMIT 1
+                """,
+                (user_id,),
+            ) as cur:
+                row = await cur.fetchone()
+        return row[0] if row else None
+
     # --- пробный период ---
 
     async def has_used_trial(self, user_id: int) -> bool:

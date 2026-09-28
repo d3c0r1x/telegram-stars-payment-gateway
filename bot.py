@@ -271,7 +271,11 @@ async def cmd_status(message: Message) -> None:
     if until and await db.is_subscribed(message.from_user.id):
         left = _days_left(until)
         suffix = f" (осталось {left} дн.)" if left >= 0 else ""
-        await message.answer(f"✅ Подписка активна до <b>{until}</b>{suffix}")
+        last_tier = await db.last_tier(message.from_user.id)
+        tier_line = f"\nТариф: <b>{_tier_label(last_tier)}</b>" if last_tier else ""
+        await message.answer(
+            f"✅ Подписка активна до <b>{until}</b>{suffix}{tier_line}"
+        )
     else:
         await message.answer("❌ Подписка не активна. /subscribe или /trial")
 
